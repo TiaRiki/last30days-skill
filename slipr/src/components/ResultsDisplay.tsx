@@ -555,7 +555,7 @@ function FindingsBreakdown({
       {expanded && (
         <div className="space-y-6 mt-4">
           {scores.map((s) => (
-            <FindingsSection key={s.letter} score={s} />
+            <FindingsSection key={s.letter} score={s} showBlurbs={recordingMode} />
           ))}
         </div>
       )}
@@ -585,7 +585,7 @@ function StatBox({
   );
 }
 
-function FindingsSection({ score }: { score: CategoryScore }) {
+function FindingsSection({ score, showBlurbs }: { score: CategoryScore; showBlurbs: boolean }) {
   const scoreColor =
     score.score <= 3
       ? "#DC2626"
@@ -610,22 +610,111 @@ function FindingsSection({ score }: { score: CategoryScore }) {
           {score.score}/10
         </span>
       </div>
-      <ul className="space-y-1 ml-10">
+      <ul className={`${showBlurbs ? "space-y-2.5" : "space-y-1"} ml-10`}>
         {score.findings.map((f, i) => (
-          <FindingRow key={i} finding={f} />
+          <FindingRow key={i} finding={f} showBlurb={showBlurbs} />
         ))}
       </ul>
     </div>
   );
 }
 
-function FindingRow({ finding }: { finding: Finding }) {
+// ---- Finding blurb lookup ----
+const FINDING_BLURBS: { pattern: RegExp; blurb: string }[] = [
+  // SPEED
+  { pattern: /No live chat widget detected/i, blurb: "After-hours visitors leave without answers" },
+  { pattern: /chat widget detected$/i, blurb: "Instant answers = higher conversion" },
+  { pattern: /No text\/SMS option/i, blurb: "#1 contact method for under-40 customers — missing" },
+  { pattern: /SMS\/text option available/i, blurb: "Meeting customers where they want to communicate" },
+  { pattern: /No after-hours or emergency options/i, blurb: "Leads after 5pm go to competitors who respond" },
+  { pattern: /Limited business hours displayed/i, blurb: "Leads after 5pm go to competitors who respond" },
+  { pattern: /24\/7 availability indicated/i, blurb: "Capturing leads when competitors are closed" },
+  { pattern: /Same-day service promoted/i, blurb: "Speed promise — but only works if they're reachable" },
+  { pattern: /Emergency services available/i, blurb: "Capturing leads when competitors are closed" },
+  { pattern: /response time commitment displayed/i, blurb: "Speed promise — but only works if they're reachable" },
+  { pattern: /Phone-only contact/i, blurb: "Limited options = lost opportunities" },
+  { pattern: /Only \d+ contact channels detected/i, blurb: "Limited options = lost opportunities" },
+  { pattern: /\d+ contact channels available/i, blurb: "More ways in = more leads captured" },
+
+  // LEAKAGE
+  { pattern: /Email capture form detected/i, blurb: "Can nurture leads who aren't ready to buy today" },
+  { pattern: /No email capture/i, blurb: "Visitors who leave are gone forever" },
+  { pattern: /Lead magnets found/i, blurb: "Giving value upfront builds trust" },
+  { pattern: /No lead magnets/i, blurb: "No reason for prospects to engage before they're ready" },
+  { pattern: /Exit-intent popup detected/i, blurb: "Last chance capture before they bounce" },
+  { pattern: /Tracking stack:/i, blurb: "Can retarget and measure what's working" },
+  { pattern: /Limited tracking:/i, blurb: "Can retarget and measure what's working" },
+  { pattern: /Missing critical pixels/i, blurb: "Flying blind — can't retarget or measure" },
+  { pattern: /No tracking pixels detected/i, blurb: "Flying blind — can't retarget or measure" },
+  { pattern: /Blog\/content section present/i, blurb: "SEO value + nurture content" },
+  { pattern: /No blog or content/i, blurb: "Missing SEO opportunity" },
+  { pattern: /Resources\/guides section found/i, blurb: "SEO value + nurture content" },
+
+  // INFRASTRUCTURE
+  { pattern: /Online booking detected/i, blurb: "Self-service scheduling = less friction, fewer no-shows" },
+  { pattern: /No online booking/i, blurb: "Every appointment requires a phone call — that's friction" },
+  { pattern: /CRM\/marketing platform/i, blurb: "Leads tracked systematically" },
+  { pattern: /No CRM detected/i, blurb: "Leads likely in spreadsheets or email — things fall through" },
+  { pattern: /Payment options detected/i, blurb: "Easy to pay = faster collection" },
+  { pattern: /Limited payment info/i, blurb: "No financing mentioned — could close more big jobs" },
+  { pattern: /No payment information visible/i, blurb: "Easy to pay = faster collection" },
+  { pattern: /Financing option available/i, blurb: "Easy to pay = faster collection" },
+  { pattern: /Slow page load/i, blurb: "Losing impatient visitors + SEO penalty" },
+  { pattern: /Fast page load/i, blurb: "Good UX + SEO benefit" },
+  { pattern: /Service area pages detected/i, blurb: "Ranking for '[service] near me' searches" },
+  { pattern: /No service area pages/i, blurb: "Missing local SEO opportunity" },
+
+  // PROCESS
+  { pattern: /Review responses appear personalized/i, blurb: "Shows someone's paying attention — builds trust" },
+  { pattern: /responses are copy\/paste/i, blurb: "Customers notice. Looks automated and careless" },
+  { pattern: /responses appear templated/i, blurb: "Customers notice. Looks automated and careless" },
+  { pattern: /Hiring for.*CSR|Hiring for.*Customer Service/i, blurb: "Lead follow-up may be overwhelming the team" },
+  { pattern: /Hiring for.*Dispatcher|Hiring for.*Scheduling/i, blurb: "Scheduling and coordination is a bottleneck" },
+  { pattern: /Hiring for.*Office Manager|Hiring for.*Admin/i, blurb: "Operations running on manual effort" },
+  { pattern: /Hiring for automatable roles/i, blurb: "These roles can be partially or fully automated" },
+  { pattern: /No current hiring signals/i, blurb: "Team appears stable — not overwhelmed" },
+  { pattern: /High turnover signals/i, blurb: "Systems aren't supporting the team" },
+  { pattern: /"Call for quote"/i, blurb: "Every quote requires a phone call — friction kills conversions" },
+  { pattern: /"We'll get back to you"/i, blurb: "Manual follow-up = leads falling through cracks" },
+  { pattern: /"Request a callback"/i, blurb: "Manual queue = slow response = lost leads" },
+  { pattern: /Online quote\/estimate option/i, blurb: "Self-service reduces friction" },
+  { pattern: /review response rate.*ignoring/i, blurb: "Ignoring customers publicly — bad look" },
+  { pattern: /review response rate.*inconsistent/i, blurb: "Responding sometimes — should be every review" },
+  { pattern: /^\d+% review response rate$/i, blurb: "Engaged owner — builds trust" },
+
+  // REPUTATION
+  { pattern: /star rating — excellent/i, blurb: "Customers are happy — that's the foundation" },
+  { pattern: /star rating — strong/i, blurb: "Customers are happy — that's the foundation" },
+  { pattern: /star rating — room for improvement/i, blurb: "Room to improve — negative reviews dragging it down" },
+  { pattern: /star rating — below industry/i, blurb: "Trust problem — prospects will choose competitors" },
+  { pattern: /reviews\/month — healthy/i, blurb: "Actively generating social proof" },
+  { pattern: /reviews\/month — moderate/i, blurb: "Actively generating social proof" },
+  { pattern: /reviews\/month — stagnant/i, blurb: "Not asking — happy customers aren't leaving reviews" },
+  { pattern: /reviews in the last 7 days/i, blurb: "Fresh activity signals active business" },
+  { pattern: /reviews in the last 30 days/i, blurb: "Fresh activity signals active business" },
+  { pattern: /No reviews in the last 30 days/i, blurb: "Looks inactive — prospects wonder if still in business" },
+  { pattern: /response rate — actively engaging/i, blurb: "Engaged owner — builds trust" },
+  { pattern: /response rate — responding inconsistently/i, blurb: "Responding sometimes — should be every review" },
+  { pattern: /response rate — not engaging/i, blurb: "Ignoring customers publicly — bad look" },
+  { pattern: /negative reviews mention.*recurring/i, blurb: "Patterns in complaints reveal fixable system gaps" },
+];
+
+function getBlurb(findingText: string): string | null {
+  for (const { pattern, blurb } of FINDING_BLURBS) {
+    if (pattern.test(findingText)) return blurb;
+  }
+  return null;
+}
+
+function FindingRow({ finding, showBlurb }: { finding: Finding; showBlurb?: boolean }) {
   const icon =
     finding.type === "positive"
       ? { symbol: "+", color: "#10B981" }
       : finding.type === "negative"
         ? { symbol: "-", color: "#DC2626" }
         : { symbol: "~", color: "#F59E0B" };
+
+  const blurb = showBlurb ? getBlurb(finding.text) : null;
 
   return (
     <li className="flex items-start gap-2 text-sm">
@@ -635,7 +724,12 @@ function FindingRow({ finding }: { finding: Finding }) {
       >
         {icon.symbol}
       </span>
-      <span className="text-gray-700">{finding.text}</span>
+      <div>
+        <span className="text-gray-700">{finding.text}</span>
+        {blurb && (
+          <p className="text-xs text-gray-400 mt-0.5 ml-0.5">{blurb}</p>
+        )}
+      </div>
     </li>
   );
 }

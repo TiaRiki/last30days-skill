@@ -109,62 +109,65 @@ export function analyzeReputation(reviews: ParsedReview[]): {
     });
   }
 
-  // Volume findings
-  if (totalReviews >= 200) {
+  // Velocity findings (primary signal — weighted heavily)
+  if (monthlyVelocity >= 3) {
     findings.push({
       type: "positive",
-      text: `${totalReviews} total reviews — strong social proof`,
+      text: `${monthlyVelocity.toFixed(1)} reviews/month — healthy review velocity`,
     });
-  } else if (totalReviews >= 100) {
+  } else if (monthlyVelocity >= 1) {
     findings.push({
       type: "neutral",
-      text: `${totalReviews} total reviews — decent but competitors may have more`,
-    });
-  } else if (totalReviews >= 25) {
-    findings.push({
-      type: "negative",
-      text: `Only ${totalReviews} reviews — thin social proof, need a review generation system`,
+      text: `${monthlyVelocity.toFixed(1)} reviews/month — moderate velocity, could be stronger`,
     });
   } else {
     findings.push({
       type: "negative",
-      text: `Only ${totalReviews} reviews — critically low social proof`,
+      text: `${monthlyVelocity.toFixed(1)} reviews/month — stagnant review flow, not asking consistently`,
     });
   }
 
-  // Velocity findings
-  if (monthlyVelocity >= 8) {
-    findings.push({
-      type: "positive",
-      text: `${monthlyVelocity.toFixed(1)} reviews/month — strong velocity`,
-    });
-  } else if (monthlyVelocity >= 3) {
-    findings.push({
-      type: "neutral",
-      text: `${monthlyVelocity.toFixed(1)} reviews/month — moderate velocity`,
-    });
-  } else {
-    findings.push({
-      type: "negative",
-      text: `${monthlyVelocity.toFixed(1)} reviews/month — stagnant review flow`,
-    });
-  }
-
-  // Recency
+  // Recency findings (primary signal)
   if (last7Days > 0) {
     findings.push({
       type: "positive",
-      text: `${last7Days} reviews in the last 7 days`,
+      text: `${last7Days} reviews in the last 7 days — actively generating reviews`,
     });
   } else if (last30Days > 0) {
     findings.push({
       type: "neutral",
-      text: `Last review was ${last30Days > 1 ? "within 30 days" : "recent"}`,
+      text: `${last30Days} reviews in the last 30 days — some recent activity`,
     });
   } else {
     findings.push({
       type: "negative",
       text: "No reviews in the last 30 days — reputation looks inactive to prospects",
+    });
+  }
+
+  // Response rate findings
+  if (responseRate >= 0.7) {
+    findings.push({
+      type: "positive",
+      text: `${Math.round(responseRate * 100)}% response rate — actively engaging with reviewers`,
+    });
+  } else if (responseRate >= 0.4) {
+    findings.push({
+      type: "neutral",
+      text: `${Math.round(responseRate * 100)}% response rate — responding inconsistently`,
+    });
+  } else if (totalReviews > 0) {
+    findings.push({
+      type: "negative",
+      text: `${Math.round(responseRate * 100)}% response rate — not engaging with reviewers`,
+    });
+  }
+
+  // Total reviews as context only (not flagged as negative)
+  if (totalReviews > 0) {
+    findings.push({
+      type: "neutral",
+      text: `${totalReviews} total reviews on file`,
     });
   }
 
@@ -279,23 +282,29 @@ export function analyzeReputation(reviews: ParsedReview[]): {
     }
   }
 
-  // Calculate Score
+  // ---- Updated Scoring: velocity-weighted, total count de-weighted ----
+  // Base score starts at 1, max 10
   let score = 1;
 
-  // Rating
-  if (overallRating >= 4.8) score += 4;
-  else if (overallRating >= 4.5) score += 3;
-  else if (overallRating >= 4.0) score += 2;
-  else if (overallRating >= 3.5) score += 1;
+  // Star rating (up to +3)
+  if (overallRating >= 4.8) score += 3;
+  else if (overallRating >= 4.5) score += 2;
+  else if (overallRating >= 4.0) score += 1;
+  // Under 4.0 = no rating bonus
 
-  // Volume
-  if (totalReviews >= 200) score += 3;
-  else if (totalReviews >= 100) score += 2;
-  else if (totalReviews >= 50) score += 1;
+  // Review velocity — primary signal (up to +3)
+  if (monthlyVelocity >= 3) score += 3;
+  else if (monthlyVelocity >= 1) score += 2;
+  else if (monthlyVelocity >= 0.5) score += 1;
+  // Under 0.5/month = stagnant, no bonus
 
-  // Velocity
-  if (monthlyVelocity >= 8) score += 2;
-  else if (monthlyVelocity >= 3) score += 1;
+  // Recency (up to +2)
+  if (last7Days >= 2) score += 2;
+  else if (last7Days >= 1 || last30Days >= 3) score += 1;
+  // No recent reviews = no bonus
+
+  // Response rate (up to +1)
+  if (responseRate >= 0.7) score += 1;
 
   // Negative sentiment penalty
   const totalNegativeThemes = Object.values(sentimentCategories).reduce(

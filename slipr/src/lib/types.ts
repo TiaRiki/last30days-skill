@@ -87,4 +87,5 @@ export interface ScanResult {
   };
   recommendation: Recommendation;
   recordingMode: boolean;
+  scanTimeSeconds?: number;
 }

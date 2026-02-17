@@ -78,6 +78,30 @@ export const INDUSTRIES: Record<string, IndustryBenchmark> = {
     avgMonthlyLeads: 25,
     afterHoursPercent: 0.30,
   },
+  "doors-gates": {
+    label: "Doors/Gates",
+    avgTicket: 650,
+    avgMonthlyLeads: 40,
+    afterHoursPercent: 0.30,
+  },
+  "welding": {
+    label: "Welding",
+    avgTicket: 800,
+    avgMonthlyLeads: 30,
+    afterHoursPercent: 0.15,
+  },
+  "hearing-aid-dealers": {
+    label: "Hearing Aid Dealers",
+    avgTicket: 3000,
+    avgMonthlyLeads: 25,
+    afterHoursPercent: 0.10,
+  },
+  "general-services": {
+    label: "General Services",
+    avgTicket: 300,
+    avgMonthlyLeads: 40,
+    afterHoursPercent: 0.25,
+  },
 };
 
 export const INDUSTRY_OPTIONS = Object.entries(INDUSTRIES).map(

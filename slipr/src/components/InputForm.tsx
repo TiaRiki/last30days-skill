@@ -15,7 +15,9 @@ export default function InputForm({ onSubmit, loading, error }: InputFormProps) 
   const [industry, setIndustry] = useState("");
   const [metro, setMetro] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [hiringFile, setHiringFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const hiringFileRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,6 +28,9 @@ export default function InputForm({ onSubmit, loading, error }: InputFormProps) 
     formData.set("metro", metro);
     if (csvFile) {
       formData.set("csvFile", csvFile);
+    }
+    if (hiringFile) {
+      formData.set("hiringFile", hiringFile);
     }
     onSubmit(formData);
   }
@@ -137,6 +142,75 @@ export default function InputForm({ onSubmit, loading, error }: InputFormProps) 
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
                   Single company review export
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Hiring Signals Upload (optional) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Hiring Signals{" "}
+            <span className="text-gray-400">(optional)</span>
+          </label>
+          <div
+            onClick={() => hiringFileRef.current?.click()}
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition ${
+              hiringFile
+                ? "border-[#10B981] bg-green-50"
+                : "border-gray-300 hover:border-[#E8692D] hover:bg-orange-50"
+            }`}
+          >
+            <input
+              ref={hiringFileRef}
+              type="file"
+              accept=".pdf,.txt,.md"
+              onChange={(e) => setHiringFile(e.target.files?.[0] || null)}
+              className="hidden"
+            />
+            {hiringFile ? (
+              <div>
+                <svg
+                  className="w-6 h-6 mx-auto text-[#10B981] mb-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <p className="text-sm font-medium text-gray-700">
+                  {hiringFile.name}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(hiringFile.size / 1024).toFixed(1)} KB — Click to replace
+                </p>
+              </div>
+            ) : (
+              <div>
+                <svg
+                  className="w-6 h-6 mx-auto text-gray-400 mb-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <p className="text-sm text-gray-600">
+                  Upload hiring research from your prep work
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Accepts .pdf, .txt, .md files
                 </p>
               </div>
             )}

@@ -60,6 +60,13 @@ function selectOpportunities(scores: CategoryScore[], reviewVelocity: number): O
     usedCategories.add(opp.text);
   }
 
+  // If hiring signals detected from uploaded file → include internal opportunities
+  const hiringAnalysis = getHiringFileAnalysis(scores);
+  if (hiringAnalysis) {
+    addIfNew(OPPORTUNITIES.internal[0]); // internal task routing
+    addIfNew(OPPORTUNITIES.internal[1]); // new hire onboarding sequences
+  }
+
   // If R score < 7 → include review request automation OR feedback loop
   if ((scoreMap["R"] || 10) < 7) {
     addIfNew(OPPORTUNITIES.postService[2]); // review request automation
@@ -110,6 +117,21 @@ function selectOpportunities(scores: CategoryScore[], reviewVelocity: number): O
   return selected.slice(0, 3);
 }
 
+// ---- Helper to extract hiring file analysis from P score details ----
+interface HiringFileAnalysis {
+  rolesDetected: string[];
+  interpretations: string[];
+  contextFlags: string[];
+  hasSignals: boolean;
+}
+
+function getHiringFileAnalysis(scores: CategoryScore[]): HiringFileAnalysis | null {
+  const pScore = scores.find((s) => s.letter === "P");
+  if (!pScore) return null;
+  const analysis = pScore.details?.hiringFileAnalysis as HiringFileAnalysis | undefined;
+  return analysis?.hasSignals ? analysis : null;
+}
+
 // ---- "What I See" bullet generation ----
 function generateWhatISee(result: ScanResult): string[] {
   const bullets: string[] = [];
@@ -134,6 +156,14 @@ function generateWhatISee(result: ScanResult): string[] {
     const words = neg.text.split(" ");
     const short = words.length > 12 ? words.slice(0, 12).join(" ") + "..." : neg.text;
     bullets.push(short);
+  }
+
+  // Add hiring signal bullet if detected from uploaded file
+  const hiringAnalysis = getHiringFileAnalysis(scores);
+  if (hiringAnalysis && bullets.length < 4) {
+    const topRole = hiringAnalysis.rolesDetected[0];
+    const topInterpretation = hiringAnalysis.interpretations[0];
+    bullets.push(`Hiring for ${topRole} — ${topInterpretation?.toLowerCase() || "team is underwater on follow-up"}`);
   }
 
   // Reference the dollar impact from priority leak

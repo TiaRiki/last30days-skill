@@ -9,6 +9,7 @@ import { analyzeReputation } from "@/lib/analyzers/reputation";
 import { getRecommendation } from "@/lib/recommendations";
 import { INDUSTRIES } from "@/data/industry-benchmarks";
 import type { CategoryScore, ScanResult } from "@/lib/types";
+import { PDFParse } from "pdf-parse";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +41,23 @@ export async function POST(request: NextRequest) {
       reviews = parseCSV(csvText);
     }
 
+    // Parse hiring signals file (optional)
+    let hiringFileContent: string | undefined;
+    const hiringFile = formData.get("hiringFile") as File | null;
+    if (hiringFile) {
+      const fileName = hiringFile.name.toLowerCase();
+      if (fileName.endsWith(".pdf")) {
+        const arrayBuffer = await hiringFile.arrayBuffer();
+        const pdf = new PDFParse({ data: new Uint8Array(arrayBuffer) });
+        const textResult = await pdf.getText();
+        hiringFileContent = textResult.text;
+        await pdf.destroy();
+      } else {
+        // .txt and .md — raw text
+        hiringFileContent = await hiringFile.text();
+      }
+    }
+
     // Scrape website
     const pages = await scrapeWebsite(websiteUrl);
 
@@ -69,7 +87,7 @@ export async function POST(request: NextRequest) {
     const speedScore = analyzeSpeed(pages);
     const leakageScore = analyzeLeakage(pages);
     const infraScore = analyzeInfrastructure(pages);
-    const processScore = analyzeProcess(pages, reviews);
+    const processScore = analyzeProcess(pages, reviews, hiringFileContent);
     const { score: reputationScore, highlights, stats } =
       analyzeReputation(reviews);
 

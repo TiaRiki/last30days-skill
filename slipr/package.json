@@ -12,6 +12,7 @@
     "cheerio": "^1.0.0",
     "next": "^15.1.0",
     "papaparse": "^5.4.1",
+    "pdf-parse": "^2.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -19,6 +20,7 @@
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/papaparse": "^5.3.14",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",

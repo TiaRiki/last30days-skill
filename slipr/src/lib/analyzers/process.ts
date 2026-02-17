@@ -3,9 +3,80 @@ import { PROCESS_HIRING_ROLES } from "@/data/detection-patterns";
 import { detectCopyPasteResponses } from "../similarity";
 import { getCombinedText } from "../scraper";
 
+// Hiring role keywords for file-based hiring signal detection
+const HIRING_FILE_ROLES: Record<string, { keywords: string[]; interpretation: string }> = {
+  "CSR / Customer Service": {
+    keywords: ["csr", "customer service", "customer service representative"],
+    interpretation: "Lead follow-up may be overwhelming the team",
+  },
+  Receptionist: {
+    keywords: ["receptionist", "front desk"],
+    interpretation: "Lead follow-up may be overwhelming the team",
+  },
+  "Appointment Setter": {
+    keywords: ["appointment setter", "appointment setting"],
+    interpretation: "Lead follow-up may be overwhelming the team",
+  },
+  "Lead Follow-up": {
+    keywords: ["lead follow-up", "lead follow up", "lead followup"],
+    interpretation: "Lead follow-up may be overwhelming the team",
+  },
+  Dispatcher: {
+    keywords: ["dispatcher", "dispatch"],
+    interpretation: "Scheduling and coordination is a bottleneck",
+  },
+  "Scheduling Coordinator": {
+    keywords: ["scheduling coordinator", "schedule coordinator"],
+    interpretation: "Scheduling and coordination is a bottleneck",
+  },
+  "Office Manager": {
+    keywords: ["office manager"],
+    interpretation: "Operations running on manual effort",
+  },
+  Admin: {
+    keywords: ["admin", "administrative assistant", "office admin"],
+    interpretation: "Operations running on manual effort",
+  },
+};
+
+interface HiringFileAnalysis {
+  rolesDetected: string[];
+  interpretations: string[];
+  contextFlags: string[];
+  hasSignals: boolean;
+}
+
+function analyzeHiringFile(content: string): HiringFileAnalysis {
+  const lower = content.toLowerCase();
+  const rolesDetected: string[] = [];
+  const interpretations: string[] = [];
+
+  // Scan for role keywords
+  for (const [role, { keywords, interpretation }] of Object.entries(HIRING_FILE_ROLES)) {
+    if (keywords.some((k) => lower.includes(k))) {
+      rolesDetected.push(role);
+      if (!interpretations.includes(interpretation)) {
+        interpretations.push(interpretation);
+      }
+    }
+  }
+
+  // Scan for context phrases
+  const contextFlags: string[] = [];
+  if (/multiple\s+postings|multiple\s+positions|multiple\s+openings/i.test(content) ||
+      /urgently\s+hiring|urgent\s+hire|immediately|asap/i.test(content)) {
+    contextFlags.push("High turnover signals — systems aren't supporting the team");
+  }
+
+  const hasSignals = rolesDetected.length > 0;
+
+  return { rolesDetected, interpretations, contextFlags, hasSignals };
+}
+
 export function analyzeProcess(
   pages: ScrapedPage[],
-  reviews: ParsedReview[]
+  reviews: ParsedReview[],
+  hiringFileContent?: string
 ): CategoryScore {
   const text = getCombinedText(pages);
   const findings: Finding[] = [];
@@ -166,6 +237,33 @@ export function analyzeProcess(
     details.hiringSignals = hiringSignals;
   }
 
+  // 4. Hiring File Analysis (uploaded prep research)
+  let hiringFileAnalysis: HiringFileAnalysis | undefined;
+  if (hiringFileContent) {
+    hiringFileAnalysis = analyzeHiringFile(hiringFileContent);
+    details.hiringFileAnalysis = hiringFileAnalysis;
+
+    if (hiringFileAnalysis.hasSignals) {
+      // Build a combined finding with detected roles and interpretations
+      const roleNames = hiringFileAnalysis.rolesDetected.join(" and ");
+      const interpretationText = hiringFileAnalysis.interpretations.join("; ");
+      findings.push({
+        type: "negative",
+        text: `Hiring for ${roleNames} — ${interpretationText}`,
+      });
+
+      // Add context flags as separate findings
+      for (const flag of hiringFileAnalysis.contextFlags) {
+        findings.push({ type: "negative", text: flag });
+      }
+    } else {
+      findings.push({
+        type: "positive",
+        text: "No current hiring signals — team appears stable",
+      });
+    }
+  }
+
   // Calculate Score
   let score = 7; // Start neutral-positive
 
@@ -183,10 +281,17 @@ export function analyzeProcess(
     score -= 1;
   if (processIndicators.getBackToYou) score -= 1;
 
-  // Hiring penalty
+  // Hiring penalty (website-detected)
   const processRolesCount = Object.values(hiringSignals).filter(Boolean).length;
   if (processRolesCount >= 2) score -= 2;
   else if (processRolesCount === 1) score -= 1;
+
+  // Hiring file penalty (uploaded research)
+  if (hiringFileAnalysis?.hasSignals) {
+    const fileRolesCount = hiringFileAnalysis.rolesDetected.length;
+    if (fileRolesCount >= 2) score -= 2;
+    else if (fileRolesCount === 1) score -= 1;
+  }
 
   score = Math.min(10, Math.max(1, score));
 

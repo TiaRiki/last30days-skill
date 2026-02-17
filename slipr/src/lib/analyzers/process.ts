@@ -46,7 +46,23 @@ interface HiringFileAnalysis {
   hasSignals: boolean;
 }
 
+// Phrases that explicitly indicate NO hiring activity
+const NO_HIRING_PHRASES = [
+  /no\s+active\s+hiring\s+signals/i,
+  /no\s+job\s+postings\s+found/i,
+  /not\s+currently\s+hiring/i,
+  /no\s+hiring\s+signals\s+detected/i,
+];
+
 function analyzeHiringFile(content: string): HiringFileAnalysis {
+  // Check for explicit "no hiring" phrases first — if present, the file is
+  // saying the company is NOT hiring, even if role keywords appear in context
+  // (e.g. "No CSR/dispatcher hiring = lead volume is manageable")
+  const hasNoHiringPhrase = NO_HIRING_PHRASES.some((re) => re.test(content));
+  if (hasNoHiringPhrase) {
+    return { rolesDetected: [], interpretations: [], contextFlags: [], hasSignals: false };
+  }
+
   const lower = content.toLowerCase();
   const rolesDetected: string[] = [];
   const interpretations: string[] = [];

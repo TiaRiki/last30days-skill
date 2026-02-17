@@ -8,7 +8,7 @@ import ReviewHighlightCard from "./ReviewHighlightCard";
 interface Props {
   result: ScanResult;
   dayNumber: number;
-  ctaUrl: string;
+  ctaMessage: string;
 }
 
 // ---- Opportunity selection logic ----
@@ -151,7 +151,7 @@ function generateWhatISee(result: ScanResult): string[] {
   return bullets.slice(0, 4);
 }
 
-export default function ResultsDisplay({ result, dayNumber, ctaUrl }: Props) {
+export default function ResultsDisplay({ result, dayNumber, ctaMessage }: Props) {
   const {
     companyName,
     metro,
@@ -482,12 +482,9 @@ export default function ResultsDisplay({ result, dayNumber, ctaUrl }: Props) {
 
       {/* 11. CTA Bar — Recording Mode only */}
       {recordingMode && (
-        <div className="bg-[#1B365D] rounded-xl shadow-lg p-4 text-center animate-fade-in-up">
-          <p className="text-white text-lg font-semibold">
-            Want your own S.L.I.P.R. scan?{" "}
-            <span className="text-[#E8692D] font-bold">
-              &#x2192; {ctaUrl}
-            </span>
+        <div className="bg-[#1B365D] rounded-xl shadow-lg p-5 text-center animate-fade-in-up">
+          <p className="text-[#E8692D] text-xl font-bold tracking-wide">
+            {ctaMessage}
           </p>
         </div>
       )}

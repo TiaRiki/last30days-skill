@@ -16,8 +16,8 @@ export default function Home() {
   const [showDaySettings, setShowDaySettings] = useState(false);
   const [dayInput, setDayInput] = useState("");
 
-  // CTA URL — customizable in settings
-  const [ctaUrl, setCtaUrl] = useState("therevenurecoverypeople.com/scan");
+  // CTA message — customizable in settings
+  const [ctaMessage, setCtaMessage] = useState("DM me for your own S.L.I.P.R. scan");
   const [showSettings, setShowSettings] = useState(false);
   const [ctaInput, setCtaInput] = useState("");
 
@@ -28,8 +28,8 @@ export default function Home() {
   useEffect(() => {
     const savedDay = localStorage.getItem("slipr-day-number");
     if (savedDay) setDayNumber(parseInt(savedDay, 10) || 1);
-    const savedCta = localStorage.getItem("slipr-cta-url");
-    if (savedCta) setCtaUrl(savedCta);
+    const savedCta = localStorage.getItem("slipr-cta-message");
+    if (savedCta) setCtaMessage(savedCta);
   }, []);
 
   // Save day number when it changes
@@ -37,10 +37,10 @@ export default function Home() {
     localStorage.setItem("slipr-day-number", String(dayNumber));
   }, [dayNumber]);
 
-  // Save CTA URL when it changes
+  // Save CTA message when it changes
   useEffect(() => {
-    localStorage.setItem("slipr-cta-url", ctaUrl);
-  }, [ctaUrl]);
+    localStorage.setItem("slipr-cta-message", ctaMessage);
+  }, [ctaMessage]);
 
   async function handleScan(formData: FormData) {
     setLoading(true);
@@ -88,9 +88,9 @@ export default function Home() {
     setDayInput("");
   }
 
-  function handleSaveCtaUrl() {
+  function handleSaveCtaMessage() {
     if (ctaInput.trim()) {
-      setCtaUrl(ctaInput.trim());
+      setCtaMessage(ctaInput.trim());
     }
     setShowSettings(false);
     setCtaInput("");
@@ -179,7 +179,7 @@ export default function Home() {
                 type="button"
                 onClick={() => {
                   setShowSettings(!showSettings);
-                  setCtaInput(ctaUrl);
+                  setCtaInput(ctaMessage);
                 }}
                 className="text-gray-400 hover:text-white transition-colors"
                 title="Settings"
@@ -194,19 +194,20 @@ export default function Home() {
                   <h4 className="text-sm font-bold text-gray-800 mb-3">Settings</h4>
                   <div>
                     <label className="text-xs font-medium text-gray-600 block mb-1">
-                      CTA URL
+                      CTA Message (shown in recording mode)
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={ctaInput}
                         onChange={(e) => setCtaInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSaveCtaUrl()}
+                        onKeyDown={(e) => e.key === "Enter" && handleSaveCtaMessage()}
+                        placeholder="DM me for your own S.L.I.P.R. scan"
                         className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-1 focus:ring-[#E8692D] outline-none"
                       />
                       <button
                         type="button"
-                        onClick={handleSaveCtaUrl}
+                        onClick={handleSaveCtaMessage}
                         className="px-3 py-1 bg-[#E8692D] text-white text-sm rounded hover:bg-[#d15a22] transition-colors"
                       >
                         Save
@@ -253,7 +254,7 @@ export default function Home() {
             <ResultsDisplay
               result={result}
               dayNumber={dayNumber}
-              ctaUrl={ctaUrl}
+              ctaMessage={ctaMessage}
             />
           </>
         )}
